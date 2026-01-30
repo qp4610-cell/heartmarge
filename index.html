@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>하트 팡팡 - 마스터 최종본</title>
+    <title>하트 팡팡 - 최종 최적화본</title>
     <style>
         :root {
             --main-pink: #FF62A5;
@@ -14,9 +14,9 @@
             --pastel-border: #FFD1E6;
             --btn-border: #FF8BBF;
             --yellow-fill: #FFED4D;
-            --btn-yellow-bg: #FFED4D;
-            --btn-yellow-border: #E6D600;
-            --btn-yellow-shadow: #C7B800;
+            --btn-yellow-bg: #FFD54F; /* 따뜻한 오렌지 톤 옐로우 */
+            --btn-yellow-border: #FFB300;
+            --btn-yellow-shadow: #FFA000;
             --white: #FFFFFF;
         }
 
@@ -48,11 +48,7 @@
             margin-left: 18px; overflow: hidden; position: relative;
         }
         
-        /* [수정] 시각적 오차를 줄이기 위해 transition 제거 및 정밀 계산 */
-        .gauge-fill { 
-            height: 100%; background: linear-gradient(to bottom, #FFED4D, #FFD700); 
-            width: 100%; 
-        }
+        .gauge-fill { height: 100%; background: linear-gradient(to bottom, #FFED4D, #FFD700); width: 100%; transition: none; }
         
         .score-text { 
             position: absolute; right: 12px; top: 50%; transform: translateY(-50%); 
@@ -83,10 +79,7 @@
         }
         .modal h2 { color: var(--main-pink); font-size: 1.4rem; font-weight: 900; margin-bottom: 20px; }
         
-        .tutorial-steps { 
-            text-align: left; font-size: 0.85rem; line-height: 2.2; color: #333; 
-            font-weight: 900; margin-bottom: 25px; 
-        }
+        .tutorial-steps { text-align: left; font-size: 0.85rem; line-height: 2.2; color: #333; font-weight: 900; margin-bottom: 25px; }
         .tutorial-steps b { color: var(--main-pink); }
 
         .nickname-input {
@@ -95,16 +88,15 @@
             text-align: center; font-weight: 700; color: var(--main-pink);
         }
 
-        .ranking-table {
-            width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 0.9rem;
-        }
+        .ranking-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 0.9rem; }
         .ranking-table th { border-bottom: 2px solid var(--main-pink); color: var(--main-pink); padding: 8px; }
         .ranking-table td { padding: 8px; border-bottom: 1px solid #eee; font-weight: 700; }
 
         .btn-group { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+        
+        /* 버튼 높이 약 10% 축소 (패딩 조절) */
         .btn { 
-            background: var(--main-pink); color: var(--white); 
-            border: 2px solid var(--btn-border);
+            background: var(--main-pink); color: var(--white); border: 2px solid var(--btn-border);
             padding: 12.5px 0; width: 100%; border-radius: 40px; 
             font-size: 1.25rem; font-weight: 900; cursor: pointer;
             box-shadow: 0 7px 0 var(--dark-pink); transition: all 0.1s;
@@ -120,7 +112,6 @@
         }
         .btn-yellow:active { box-shadow: 0 3px 0 var(--btn-yellow-shadow); }
 
-        /* [수정] 겹침 방지를 위해 마진 및 위치 조정 */
         .sub-text { font-size: 0.75rem; color: #888; font-weight: 700; margin-bottom: 10px; display: block; }
 
         #feedback-text {
@@ -225,9 +216,10 @@
     });
 
     let hearts = []; const ROWS = 17, COLS = 10;
-    let score = 0, timeLeft = 60, isDragging = false;
+    let score = 0, isDragging = false;
     let startX, startY, currentX, currentY;
     let gameState = 'waiting';
+    let scoreSaved = false; 
 
     function initGame() {
         hearts = [];
@@ -241,61 +233,70 @@
 
     function startGame() {
         if(gameState !== 'waiting') return;
-        gameState = 'playing'; timeLeft = 60; score = 0;
+        gameState = 'playing'; score = 0; scoreSaved = false; 
         document.getElementById('score').innerText = "0";
         document.getElementById('intro-modal').classList.add('hidden');
         document.getElementById('result-modal').classList.add('hidden');
         initGame();
         
+        const logicalDuration = 60000; // 실제 게임 시간 (60초)
+        const visualDuration = 62000;  // 게이지가 끝나는 시간 (62초로 설정하여 딜레이 방지)
+        const startTime = Date.now();
+        
         const timer = setInterval(() => {
             if (gameState !== 'playing') { clearInterval(timer); return; }
             
-            timeLeft -= 0.05; // 0.05초 단위로 더 정밀하게 업데이트
-            const progress = Math.max(0, (timeLeft / 60) * 100);
+            const now = Date.now();
+            const elapsed = now - startTime;
+            
+            // 시각적 게이지: 62초 기준으로 계산하여 60초 시점에도 바가 약간 남아있게 함
+            const progress = Math.max(0, (visualDuration - elapsed) / visualDuration * 100);
             document.getElementById('progress-fill').style.width = progress + '%';
             
-            if (timeLeft <= 0) {
+            // 실제 게임 종료: 정확히 60초(60000ms)에 종료
+            if (elapsed >= logicalDuration) {
                 clearInterval(timer);
                 gameState = 'ended';
-                document.getElementById('progress-fill').style.width = '0%';
                 document.getElementById('final-score-display').innerText = score;
                 document.getElementById('result-modal').classList.remove('hidden');
             }
-        }, 50);
+        }, 16); 
     }
 
     function handleRestart() { saveScore(); location.reload(); }
     function saveScore() {
+        if (scoreSaved || score <= 0) return;
         const nick = document.getElementById('nickname').value.trim() || "무명하트";
-        if (score <= 0) return;
         let ranks = JSON.parse(localStorage.getItem('heartPangRank')) || [];
         ranks.push({ nickname: nick, score: score });
         ranks.sort((a, b) => b.score - a.score);
         ranks = ranks.slice(0, 10);
         localStorage.setItem('heartPangRank', JSON.stringify(ranks));
+        scoreSaved = true; 
     }
 
     function showRankings() {
         saveScore();
         const ranks = JSON.parse(localStorage.getItem('heartPangRank')) || [];
         const body = document.getElementById('ranking-body');
-        
-        // [수정] 1~3위 순위권에게 왕관👑 아이콘 부여
         body.innerHTML = ranks.map((r, i) => {
             const crown = i < 3 ? ' 👑' : ''; 
             return `<tr><td>${i + 1}</td><td>${r.nickname}${crown}</td><td>${r.score}</td></tr>`;
         }).join('') || '<tr><td colspan="3">기록이 없습니다.</td></tr>';
-        
         document.getElementById('ranking-modal').classList.remove('hidden');
     }
 
     function closeRankings() { document.getElementById('ranking-modal').classList.add('hidden'); }
 
-    /* --- 애니메이션 및 드래그 로직 (이전과 동일) --- */
     function animate() {
         ctx.clearRect(0, 0, INT_W, INT_H);
         const cellW = INT_W / COLS; const cellH = INT_H / ROWS;
-        const heartSize = Math.min(cellW, cellH) * 0.92;
+        const minDim = Math.min(cellW, cellH);
+        
+        const fontSizeBase = minDim * 0.92;
+        // 하트 크기 100% 적용 (격자 가득 채움)
+        const heartImageSize = minDim; 
+
         const rx = Math.min(startX, currentX), ry = Math.min(startY, currentY);
         const rw = Math.abs(currentX - startX), rh = Math.abs(currentY - startY);
 
@@ -303,15 +304,16 @@
             if (!h.isAlive) return;
             const hx = h.col * cellW + cellW/2; const hy = h.row * cellH + cellH/2;
             if (isDragging) {
-                const half = heartSize / 2;
+                const half = heartImageSize / 2;
                 h.isSelected = !(hx - half > rx + rw || hx + half < rx || hy - half > ry + rh || hy + half < ry);
             }
             ctx.save();
             if (h.isSelected && isDragging) {
                 ctx.globalAlpha = 0.6; ctx.translate(hx, hy); ctx.scale(1.1, 1.1); ctx.translate(-hx, -hy);
             }
-            if(images.heart) ctx.drawImage(images.heart, h.col * cellW + (cellW - heartSize)/2, h.row * cellH + (cellH - heartSize)/2, heartSize, heartSize);
-            ctx.fillStyle = "white"; ctx.font = `900 ${heartSize * 0.55}px Arial`;
+            if(images.heart) ctx.drawImage(images.heart, h.col * cellW + (cellW - heartImageSize)/2, h.row * cellH + (cellH - heartImageSize)/2, heartImageSize, heartImageSize);
+            
+            ctx.fillStyle = "white"; ctx.font = `900 ${fontSizeBase * 0.55}px Arial`;
             ctx.textAlign = "center"; ctx.textBaseline = "middle";
             ctx.strokeStyle = "#FF62A5"; ctx.lineWidth = 1.5;
             ctx.strokeText(h.val, hx, hy); ctx.fillText(h.val, hx, hy); ctx.restore();
@@ -330,7 +332,6 @@
         const cy = (e.touches && e.touches.length > 0) ? e.touches[0].clientY : e.clientY;
         return { x: (cx - rect.left) * (INT_W / rect.width), y: (cy - rect.top) * (INT_H / rect.height) };
     }
-
     const start = (e) => { if(gameState!=='playing') return; isDragging = true; const p = getPos(e); startX=p.x; startY=p.y; currentX=p.x; currentY=p.y; };
     const move = (e) => { if(!isDragging) return; const p = getPos(e); currentX=p.x; currentY=p.y; };
     const end = () => {
@@ -344,12 +345,10 @@
         }
         isDragging = false; hearts.forEach(h => h.isSelected = false);
     };
-
     canvas.addEventListener('mousedown', start); window.addEventListener('mousemove', move); window.addEventListener('mouseup', end);
     canvas.addEventListener('touchstart', e => { if(gameState === 'playing') e.preventDefault(); start(e); }, {passive: false});
     canvas.addEventListener('touchmove', e => { if(gameState === 'playing') e.preventDefault(); move(e); }, {passive: false});
     canvas.addEventListener('touchend', e => { if(gameState === 'playing') e.preventDefault(); end(); }, {passive: false});
-
     document.getElementById('shuffle-btn').onclick = () => {
         if(gameState === 'playing') hearts.forEach(h => { if(h.isAlive) h.val = Math.floor(Math.random()*9)+1; });
     };
