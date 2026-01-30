@@ -14,17 +14,15 @@
             --white: #FFFFFF;
         }
 
-        /* [수정] 모바일 브라우저 UI 대응을 위한 Dynamic Viewport 설정 */
         body {
             margin: 0; padding: 0;
             background-color: #222;
             display: flex; justify-content: center; align-items: center;
             min-height: 100vh;
-            min-height: 100dvh; /* 최신 모바일 브라우저 대응 */
+            min-height: 100dvh; /* 모바일 브라우저 UI 대응 */
             overflow: hidden; touch-action: none;
         }
 
-        /* [수정] 360x640 프레임을 정중앙에 고정 */
         #game-outer {
             width: 360px; height: 640px;
             background-image: url('bg.png');
@@ -32,7 +30,6 @@
             display: flex; flex-direction: column;
             padding: 20px 15px; box-sizing: border-box;
             position: relative;
-            box-shadow: 0 0 40px rgba(0,0,0,0.5);
         }
 
         .header { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
@@ -64,17 +61,21 @@
         }
         canvas { width: 100%; height: 100%; display: block; }
 
-        .modal { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.7); z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; }
+        /* 모달 디자인 - 터치 이벤트가 잘 전달되도록 설정 */
+        .modal { 
+            position: absolute; top:0; left:0; width:100%; height:100%; 
+            background: rgba(0,0,0,0.7); z-index: 100; 
+            display: flex; flex-direction: column; justify-content: center; align-items: center; 
+            padding: 20px; box-sizing: border-box;
+            pointer-events: auto; /* 터치 이벤트 허용 */
+        }
         .modal-content { background: var(--white); border-radius: 30px; padding: 30px 20px; text-align: center; width: 95%; max-width: 330px; }
         
         .modal h2 { color: var(--main-pink); font-size: 1.5rem; font-weight: 900; margin-bottom: 20px; }
-        .tutorial-steps { 
-            text-align: left; font-size: 0.88rem; line-height: 2.2; color: #333; 
-            font-weight: 900; margin-bottom: 25px; 
-            white-space: nowrap;
-        }
+        .tutorial-steps { text-align: left; font-size: 0.88rem; line-height: 2.2; color: #333; font-weight: 900; margin-bottom: 25px; white-space: nowrap; }
         .tutorial-steps b { color: var(--main-pink); }
 
+        /* 버튼 입체감 및 터치 감도 강화 */
         .btn { 
             background: var(--main-pink); color: var(--white); 
             border: 2px solid var(--btn-border);
@@ -82,6 +83,9 @@
             font-size: 1.4rem; font-weight: 900; cursor: pointer;
             box-shadow: 0 10px 0 var(--dark-pink);
             transition: all 0.1s;
+            -webkit-tap-highlight-color: transparent; /* 모바일 터치 하이라이트 제거 */
+            user-select: none;
+            display: block;
         }
         .btn:active { transform: translateY(6px); box-shadow: 0 4px 0 var(--dark-pink); }
         .btn:disabled { opacity: 0.6; cursor: not-allowed; }
@@ -107,14 +111,14 @@
     <div class="header">
         <div class="ui-row">
             <div class="gauge-wrapper">
-                <img src="watch.png" class="icon-img" alt="watch">
+                <img src="watch.png" class="icon-img">
                 <div class="gauge-bar"><div id="progress-fill" class="gauge-fill"></div></div>
             </div>
-            <button id="shuffle-btn"><img src="refresh.png" alt="refresh"></button>
+            <button id="shuffle-btn"><img src="refresh.png"></button>
         </div>
         <div class="ui-row">
             <div class="gauge-wrapper">
-                <img src="heart.png" class="icon-img" alt="score">
+                <img src="heart.png" class="icon-img">
                 <div class="gauge-bar">
                     <div class="score-text"><span id="score">0</span></div>
                     <div class="gauge-fill" style="width: 100%; opacity: 0.25;"></div>
@@ -137,7 +141,7 @@
                 ③ 합이 10이면 하트가 팡! <b>점수</b>가 올라가요.<br>
                 ④ 없으면 <b>새로고침</b> 버튼으로 재배열하세요.
             </div>
-            <button id="start-btn" class="btn" onclick="startGame()">로딩 중...</button>
+            <button id="start-btn" class="btn" onclick="startGame()" ontouchend="startGame()">로딩 중...</button>
         </div>
     </div>
 
@@ -145,7 +149,7 @@
         <div class="modal-content">
             <h2 style="font-size: 1.8rem; font-weight: 900;">GAME OVER</h2>
             <h1 id="final-score" style="font-size: 4rem; color: var(--main-pink); margin: 20px 0; font-weight: 900;">0</h1>
-            <button class="btn" onclick="location.reload()">다시 하기</button>
+            <button class="btn" onclick="location.reload()" ontouchend="location.reload()">다시 하기</button>
         </div>
     </div>
 </div>
@@ -167,21 +171,17 @@
     const startBtn = document.getElementById('start-btn');
     const feedbackText = document.getElementById('feedback-text');
 
-    // [수정] 이미지 로드 실패 시에도 버튼을 활성화하는 안전장치
+    // 이미지 로드 시스템
     assets.forEach(src => {
         const img = new Image();
-        img.onload = () => { 
-            imagesLoaded++; 
-            checkAllLoaded(); 
-        };
-        img.onerror = () => { 
-            console.error(`Failed to load ${src}`); 
-            imagesLoaded++; // 실패해도 진행은 되게 함
-            checkAllLoaded(); 
-        };
+        img.onload = () => { imagesLoaded++; checkAllLoaded(); };
+        img.onerror = () => { console.error(`Failed: ${src}`); imagesLoaded++; checkAllLoaded(); };
         img.src = src;
         images[src.split('.')[0]] = img;
     });
+
+    // 5초 후에도 로딩이 안 되면 강제 활성화 (안전장치)
+    setTimeout(() => { if(gameState === 'waiting') { startBtn.innerText = "게임 START!"; startBtn.disabled = false; } }, 3000);
 
     function checkAllLoaded() {
         if(imagesLoaded === assets.length) {
@@ -207,6 +207,7 @@
     }
 
     function startGame() {
+        // 이미 실행 중이면 중복 실행 방지
         if(gameState !== 'waiting') return;
         
         gameState = 'playing';
@@ -254,14 +255,8 @@
                 ctx.translate(hx, hy); ctx.scale(1.1, 1.1); ctx.translate(-hx, -hy);
             }
             
-            if(images.heart && images.heart.complete) {
+            if(images.heart) {
                 ctx.drawImage(images.heart, h.col * cellW + (cellW - heartSize)/2, h.row * cellH + (cellH - heartSize)/2, heartSize, heartSize);
-            } else {
-                // 이미지 없을 때 하트 대용 동그라미
-                ctx.fillStyle = "#FFB6C1";
-                ctx.beginPath();
-                ctx.arc(hx, hy, heartSize/2, 0, Math.PI*2);
-                ctx.fill();
             }
             
             ctx.fillStyle = "white";
@@ -285,17 +280,26 @@
 
     function getPos(e) {
         const rect = canvas.getBoundingClientRect();
-        const cx = e.touches ? e.touches[0].clientX : e.clientX;
-        const cy = e.touches ? e.touches[0].clientY : e.clientY;
+        const cx = (e.touches && e.touches.length > 0) ? e.touches[0].clientX : e.clientX;
+        const cy = (e.touches && e.touches.length > 0) ? e.touches[0].clientY : e.clientY;
         return {
             x: (cx - rect.left) * (INT_W / rect.width),
             y: (cy - rect.top) * (INT_H / rect.height)
         };
     }
 
-    const start = (e) => { if(gameState!=='playing') return; isDragging = true; const p = getPos(e); startX=p.x; startY=p.y; currentX=p.x; currentY=p.y; };
-    const move = (e) => { if(!isDragging) return; const p = getPos(e); currentX=p.x; currentY=p.y; };
-    const end = () => {
+    const start = (e) => { 
+        if(gameState!=='playing') return; 
+        isDragging = true; 
+        const p = getPos(e); 
+        startX=p.x; startY=p.y; currentX=p.x; currentY=p.y; 
+    };
+    const move = (e) => { 
+        if(!isDragging) return; 
+        const p = getPos(e); 
+        currentX=p.x; currentY=p.y; 
+    };
+    const end = (e) => {
         if(!isDragging) return;
         let sum = 0; let selected = [];
         hearts.forEach(h => { if(h.isAlive && h.isSelected) { sum += h.val; selected.push(h); } });
@@ -309,13 +313,24 @@
         isDragging = false; hearts.forEach(h => h.isSelected = false);
     };
 
-    // 모바일 터치 이벤트 핸들러 강화
+    // 마우스 이벤트
     canvas.addEventListener('mousedown', start);
     window.addEventListener('mousemove', move);
     window.addEventListener('mouseup', end);
-    canvas.addEventListener('touchstart', e => { e.preventDefault(); start(e); }, {passive: false});
-    canvas.addEventListener('touchmove', e => { e.preventDefault(); move(e); }, {passive: false});
-    window.addEventListener('touchend', e => { e.preventDefault(); end(); }, {passive: false});
+    
+    // 터치 이벤트 (Canvas 전용)
+    canvas.addEventListener('touchstart', e => { 
+        if(gameState === 'playing') e.preventDefault(); 
+        start(e); 
+    }, {passive: false});
+    canvas.addEventListener('touchmove', e => { 
+        if(gameState === 'playing') e.preventDefault(); 
+        move(e); 
+    }, {passive: false});
+    canvas.addEventListener('touchend', e => { 
+        if(gameState === 'playing') e.preventDefault(); 
+        end(e); 
+    }, {passive: false});
 
     document.getElementById('shuffle-btn').onclick = () => {
         if(gameState === 'playing') hearts.forEach(h => { if(h.isAlive) h.val = Math.floor(Math.random()*9)+1; });
