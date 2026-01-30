@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>하트 팡팡 - UI 균형 최적화본</title>
+    <title>하트 팡팡 - 텍스트 정렬 교정본</title>
     <style>
+        /* --- 스타일은 이전과 동일하여 생략합니다 --- */
         :root {
             --main-pink: #FF62A5;
             --dark-pink: #D1407A;
@@ -68,13 +69,9 @@
             font-weight: 700;
         }
 
-        /* [수정] 버튼 위치를 아래로 살짝 내려 정렬 최적화 */
         #shuffle-btn { 
-            background: none; 
-            border: none; 
-            cursor: pointer; 
-            padding: 0; 
-            margin-top: 8px; /* 위로 치우친 현상 해결 */
+            background: none; border: none; cursor: pointer; padding: 0; 
+            margin-top: 8px;
         }
         #shuffle-btn img { width: 48px; height: 48px; }
 
@@ -227,6 +224,7 @@
             timeLeft -= 0.1;
             const progress = Math.max(0, (timeLeft / 60) * 100);
             document.getElementById('progress-fill').style.width = progress + '%';
+            
             if (timeLeft <= 0) {
                 clearInterval(timer);
                 gameState = 'ended';
@@ -256,10 +254,15 @@
                 ctx.globalAlpha = 0.6; ctx.translate(hx, hy); ctx.scale(1.1, 1.1); ctx.translate(-hx, -hy);
             }
             if(images.heart) ctx.drawImage(images.heart, h.col * cellW + (cellW - heartSize)/2, h.row * cellH + (cellH - heartSize)/2, heartSize, heartSize);
+            
+            /* [수정] 텍스트 수직 정렬 오프셋 제거 */
             ctx.fillStyle = "white"; ctx.font = `900 ${heartSize * 0.55}px Arial`;
             ctx.textAlign = "center"; ctx.textBaseline = "middle";
             ctx.strokeStyle = "#FF62A5"; ctx.lineWidth = 1.5;
-            ctx.strokeText(h.val, hx, hy + 2); ctx.fillText(h.val, hx, hy + 2); ctx.restore();
+            // 기존: hy + 2 -> 수정: hy (정중앙)
+            ctx.strokeText(h.val, hx, hy); 
+            ctx.fillText(h.val, hx, hy); 
+            ctx.restore();
         });
 
         if (isDragging) {
