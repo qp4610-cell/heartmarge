@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>하트 팡팡 - 마스터 버전</title>
+    <style>
+        :root {
+            --main-pink: #FF62A5;
+            --dark-pink: #D1407A;
+            --light-pink: #FFB6D3;
+            --btn-border: #FF8BBF; /* [수정] 버튼색과 더 가까운 테두리 색상 */
+            --yellow-fill: #FFED4D;
+            --white: #FFFFFF;
+        }
+
+        body {
+            margin: 0; padding: 0;
+            background-color: #222;
+            display: flex; justify-content: center; align-items: center;
+            height: 100vh; overflow: hidden; touch-action: none;
+        }
+
+        /* [수정] 외곽 프레임 제거, 360x640 고정 */
+        #game-outer {
+            width: 360px; height: 640px;
+            background-image: url('bg.png');
+            background-size: cover;
+            display: flex; flex-direction: column;
+            padding: 20px 15px; box-sizing: border-box;
+            position: relative;
+        }
+
+        .header { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+        .ui-row { display: flex; justify-content: space-between; align-items: center; }
+        .gauge-wrapper { position: relative; display: flex; align-items: center; width: 75%; }
+        .icon-img { position: absolute; left: -10px; width: 60px; height: 60px; z-index: 10; }
+        .gauge-bar {
+            width: 100%; height: 35px; background: var(--light-pink);
+            border: 3.5px solid var(--main-pink); border-radius: 20px; margin-left: 20px;
+            overflow: hidden; position: relative;
+        }
+        .gauge-fill { height: 100%; background: linear-gradient(to bottom, #FFED4D, #FFD700); width: 100%; }
+        
+        .score-text { 
+            position: absolute; right: 15px; top: 50%; transform: translateY(-50%); 
+            color: var(--white); font-weight: 900; font-size: 1.4rem; 
+            text-shadow: 2.5px 2.5px 0 var(--main-pink); z-index: 5; 
+        }
+
+        #shuffle-btn { background: none; border: none; cursor: pointer; padding: 0; }
+        #shuffle-btn img { width: 52px; height: 52px; }
+
+        /* [수정] 하트 컨테이너 라운드 및 여백 최적화 */
+        #canvas-wrapper {
+            flex: 1; position: relative; width: 100%; 
+            background: rgba(255, 255, 255, 0.25);
+            border-radius: 12px;
+            border: 3px solid var(--white); 
+            overflow: hidden;
+        }
+        canvas { width: 100%; height: 100%; display: block; }
+
+        /* 모달 및 텍스트 900 웨이트 적용 */
+        .modal { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.7); z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; }
+        .modal-content { background: var(--white); border-radius: 30px; padding: 30px 20px; text-align: center; width: 95%; max-width: 330px; }
+        
+        .modal h2 { color: var(--main-pink); font-size: 1.6rem; font-weight: 900; margin-bottom: 20px; }
+        .tutorial-steps { 
+            text-align: left; font-size: 0.88rem; line-height: 2.2; color: #333; 
+            font-weight: 900; margin-bottom: 25px; 
+            white-space: nowrap; /* 한 줄 유지 */
+        }
+        .tutorial-steps b { color: var(--main-pink); }
+
+        /* [수정] 버튼 입체감 및 얇은 테두리 색상 조정 */
+        .btn { 
+            background: var(--main-pink); color: var(--white); 
+            border: 2px solid var(--btn-border); /* 튀지 않는 중간 톤 핑크 */
+            padding: 16px 0; width: 100%; border-radius: 40px; 
+            font-size: 1.4rem; font-weight: 900; cursor: pointer;
+            box-shadow: 0 10px 0 var(--dark-pink);
+            transition: all 0.1s;
+        }
+        .btn:active { transform: translateY(6px); box-shadow: 0 4px 0 var(--dark-pink); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; transform: none; }
+
+        #feedback-text {
+            position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 4.5rem; font-weight: 900; color: var(--yellow-fill);
+            text-shadow: 4px 4px 0 var(--main-pink), -4px -4px 0 var(--main-pink);
+            z-index: 50; pointer-events: none; opacity: 0;
+        }
+        @keyframes popUp {
+            0% { opacity: 0; transform: translate(-50%, -30%) scale(0.5); }
+            30% { opacity: 1; transform: translate(-50%, -60%) scale(1.1); }
+            100% { opacity: 0; transform: translate(-50%, -100%) scale(0.8); }
+        }
+        .animate-pop { animation: popUp 0.7s ease-out forwards; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div id="game-outer">
+    <div class="header">
+        <div class="ui-row">
+            <div class="gauge-wrapper">
+                <img src="watch.png" class="icon-img" alt="watch">
+                <div class="gauge-bar"><div id="progress-fill" class="gauge-fill"></div></div>
+            </div>
+            <button id="shuffle-btn"><img src="refresh.png" alt="refresh"></button>
+        </div>
+        <div class="ui-row">
+            <div class="gauge-wrapper">
+                <img src="heart.png" class="icon-img" alt="score">
+                <div class="gauge-bar">
+                    <div class="score-text"><span id="score">0</span></div>
+                    <div class="gauge-fill" style="width: 100%; opacity: 0.25;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="canvas-wrapper">
+        <canvas id="gameCanvas"></canvas>
+        <div id="feedback-text">Great!</div>
+    </div>
+
+    <div id="intro-modal" class="modal">
+        <div class="modal-content">
+            <h2>💖 하트 게임 튜토리얼</h2>
+            <div class="tutorial-steps">
+                ① 하트 숫자 합이 <b>10</b>인 곳을 찾으세요.<br>
+                ② <b>사각형</b>을 그리듯 드래그하여 선택하세요.<br>
+                ③ 합이 10이면 하트가 팡! <b>점수</b>가 올라가요.<br>
+                ④ 없으면 <b>새로고침</b> 버튼으로 재배열하세요.
+            </div>
+            <button id="start-btn" class="btn" onclick="startGame()" disabled>로딩 중...</button>
+        </div>
+    </div>
+
+    <div id="result-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2 style="font-size: 2rem;">GAME OVER</h2>
+            <h1 id="final-score" style="font-size: 4rem; color: var(--main-pink); margin: 20px 0; font-weight: 900;">0</h1>
+            <button class="btn" onclick="location.reload()">다시 하기</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+
+    const INT_W = 330; 
+    const INT_H = 490; 
+    canvas.width = INT_W * dpr;
+    canvas.height = INT_H * dpr;
+    ctx.scale(dpr, dpr);
+
+    let images = {};
+    let imagesLoaded = 0;
+    const assets = ['heart.png', 'watch.png', 'refresh.png', 'bg.png'];
+    const startBtn = document.getElementById('start-btn');
+    const feedbackText = document.getElementById('feedback-text');
+
+    assets.forEach(src => {
+        const img = new Image();
+        img.onload = () => { if(++imagesLoaded === assets.length) { startBtn.innerText = "게임 START!"; startBtn.disabled = false; } };
+        img.src = src;
+        images[src.split('.')[0]] = img;
+    });
+
+    let hearts = [];
+    const ROWS = 17, COLS = 10;
+    let score = 0, timeLeft = 60, isDragging = false;
+    let startX, startY, currentX, currentY;
+    let gameState = 'waiting';
+
+    function initGame() {
+        hearts = [];
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                hearts.push({ row: r, col: c, val: Math.floor(Math.random() * 9) + 1, isAlive: true, isSelected: false });
+            }
+        }
+        requestAnimationFrame(animate);
+    }
+
+    function startGame() {
+        if(imagesLoaded < assets.length) return;
+        
+        // [중요] 초기화 로직 강화
+        gameState = 'playing';
+        timeLeft = 60;
+        score = 0;
+        document.getElementById('score').innerText = "0";
+        document.getElementById('intro-modal').classList.add('hidden');
+        document.getElementById('result-modal').classList.add('hidden');
+        
+        initGame();
+        
+        const timer = setInterval(() => {
+            if (gameState === 'ended') return clearInterval(timer);
+            timeLeft -= 0.1;
+            document.getElementById('progress-fill').style.width = (timeLeft / 60 * 100) + '%';
+            if (timeLeft <= 0) {
+                gameState = 'ended';
+                document.getElementById('final-score').innerText = score;
+                document.getElementById('result-modal').classList.remove('hidden');
+            }
+        }, 100);
+    }
+
+    function animate() {
+        ctx.clearRect(0, 0, INT_W, INT_H);
+        const cellW = INT_W / COLS;
+        const cellH = INT_H / ROWS;
+        const heartSize = Math.min(cellW, cellH) * 0.92;
+
+        const rx = Math.min(startX, currentX), ry = Math.min(startY, currentY);
+        const rw = Math.abs(currentX - startX), rh = Math.abs(currentY - startY);
+
+        hearts.forEach(h => {
+            if (!h.isAlive) return;
+            const hx = h.col * cellW + cellW/2;
+            const hy = h.row * cellH + cellH/2;
+
+            if (isDragging) {
+                const half = heartSize / 2;
+                h.isSelected = !(hx - half > rx + rw || hx + half < rx || hy - half > ry + rh || hy + half < ry);
+            }
+
+            ctx.save();
+            if (h.isSelected && isDragging) {
+                ctx.globalAlpha = 0.6;
+                ctx.translate(hx, hy); ctx.scale(1.1, 1.1); ctx.translate(-hx, -hy);
+            }
+            ctx.drawImage(images.heart, h.col * cellW + (cellW - heartSize)/2, h.row * cellH + (cellH - heartSize)/2, heartSize, heartSize);
+            
+            ctx.fillStyle = "white";
+            ctx.font = `900 ${heartSize * 0.55}px Arial`;
+            ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            ctx.strokeStyle = "#FF62A5"; ctx.lineWidth = 3;
+            ctx.strokeText(h.val, hx, hy + 2);
+            ctx.fillText(h.val, hx, hy + 2);
+            ctx.restore();
+        });
+
+        if (isDragging) {
+            ctx.fillStyle = "rgba(255, 98, 165, 0.2)";
+            ctx.strokeStyle = "#FF62A5";
+            ctx.lineWidth = 3;
+            ctx.fillRect(rx, ry, rw, rh);
+            ctx.strokeRect(rx, ry, rw, rh);
+        }
+        requestAnimationFrame(animate);
+    }
+
+    function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const cx = e.touches ? e.touches[0].clientX : e.clientX;
+        const cy = e.touches ? e.touches[0].clientY : e.clientY;
+        return {
+            x: (cx - rect.left) * (INT_W / rect.width),
+            y: (cy - rect.top) * (INT_H / rect.height)
+        };
+    }
+
+    const start = (e) => { if(gameState!=='playing') return; isDragging = true; const p = getPos(e); startX=p.x; startY=p.y; currentX=p.x; currentY=p.y; };
+    const move = (e) => { if(!isDragging) return; const p = getPos(e); currentX=p.x; currentY=p.y; };
+    const end = () => {
+        if(!isDragging) return;
+        let sum = 0; let selected = [];
+        hearts.forEach(h => { if(h.isAlive && h.isSelected) { sum += h.val; selected.push(h); } });
+        if(sum === 10) {
+            score += 10; document.getElementById('score').innerText = score;
+            selected.forEach(h => h.isAlive = false);
+            feedbackText.classList.remove('animate-pop'); 
+            void feedbackText.offsetWidth; 
+            feedbackText.classList.add('animate-pop');
+        }
+        isDragging = false; hearts.forEach(h => h.isSelected = false);
+    };
+
+    canvas.addEventListener('mousedown', start);
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', end);
+    canvas.addEventListener('touchstart', e => { e.preventDefault(); start(e); }, {passive: false});
+    canvas.addEventListener('touchmove', e => { e.preventDefault(); move(e); }, {passive: false});
+    window.addEventListener('touchend', e => { e.preventDefault(); end(); });
+
+    document.getElementById('shuffle-btn').onclick = () => {
+        if(gameState === 'playing') hearts.forEach(h => { if(h.isAlive) h.val = Math.floor(Math.random()*9)+1; });
+    };
+</script>
+</body>
+</html>
