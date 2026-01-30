@@ -3,25 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>하트 팡팡 - 마스터 버전</title>
+    <title>하트 팡팡 - 모바일 마스터본</title>
     <style>
         :root {
             --main-pink: #FF62A5;
             --dark-pink: #D1407A;
             --light-pink: #FFB6D3;
-            --btn-border: #FF8BBF; /* [수정] 버튼색과 더 가까운 테두리 색상 */
+            --btn-border: #FF8BBF;
             --yellow-fill: #FFED4D;
             --white: #FFFFFF;
         }
 
+        /* [수정] 모바일 브라우저 UI 대응을 위한 Dynamic Viewport 설정 */
         body {
             margin: 0; padding: 0;
             background-color: #222;
             display: flex; justify-content: center; align-items: center;
-            height: 100vh; overflow: hidden; touch-action: none;
+            min-height: 100vh;
+            min-height: 100dvh; /* 최신 모바일 브라우저 대응 */
+            overflow: hidden; touch-action: none;
         }
 
-        /* [수정] 외곽 프레임 제거, 360x640 고정 */
+        /* [수정] 360x640 프레임을 정중앙에 고정 */
         #game-outer {
             width: 360px; height: 640px;
             background-image: url('bg.png');
@@ -29,6 +32,7 @@
             display: flex; flex-direction: column;
             padding: 20px 15px; box-sizing: border-box;
             position: relative;
+            box-shadow: 0 0 40px rgba(0,0,0,0.5);
         }
 
         .header { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
@@ -51,7 +55,6 @@
         #shuffle-btn { background: none; border: none; cursor: pointer; padding: 0; }
         #shuffle-btn img { width: 52px; height: 52px; }
 
-        /* [수정] 하트 컨테이너 라운드 및 여백 최적화 */
         #canvas-wrapper {
             flex: 1; position: relative; width: 100%; 
             background: rgba(255, 255, 255, 0.25);
@@ -61,29 +64,27 @@
         }
         canvas { width: 100%; height: 100%; display: block; }
 
-        /* 모달 및 텍스트 900 웨이트 적용 */
         .modal { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.7); z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; }
         .modal-content { background: var(--white); border-radius: 30px; padding: 30px 20px; text-align: center; width: 95%; max-width: 330px; }
         
-        .modal h2 { color: var(--main-pink); font-size: 1.6rem; font-weight: 900; margin-bottom: 20px; }
+        .modal h2 { color: var(--main-pink); font-size: 1.5rem; font-weight: 900; margin-bottom: 20px; }
         .tutorial-steps { 
             text-align: left; font-size: 0.88rem; line-height: 2.2; color: #333; 
             font-weight: 900; margin-bottom: 25px; 
-            white-space: nowrap; /* 한 줄 유지 */
+            white-space: nowrap;
         }
         .tutorial-steps b { color: var(--main-pink); }
 
-        /* [수정] 버튼 입체감 및 얇은 테두리 색상 조정 */
         .btn { 
             background: var(--main-pink); color: var(--white); 
-            border: 2px solid var(--btn-border); /* 튀지 않는 중간 톤 핑크 */
+            border: 2px solid var(--btn-border);
             padding: 16px 0; width: 100%; border-radius: 40px; 
             font-size: 1.4rem; font-weight: 900; cursor: pointer;
             box-shadow: 0 10px 0 var(--dark-pink);
             transition: all 0.1s;
         }
         .btn:active { transform: translateY(6px); box-shadow: 0 4px 0 var(--dark-pink); }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; transform: none; }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
         #feedback-text {
             position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%);
@@ -136,13 +137,13 @@
                 ③ 합이 10이면 하트가 팡! <b>점수</b>가 올라가요.<br>
                 ④ 없으면 <b>새로고침</b> 버튼으로 재배열하세요.
             </div>
-            <button id="start-btn" class="btn" onclick="startGame()" disabled>로딩 중...</button>
+            <button id="start-btn" class="btn" onclick="startGame()">로딩 중...</button>
         </div>
     </div>
 
     <div id="result-modal" class="modal hidden">
         <div class="modal-content">
-            <h2 style="font-size: 2rem;">GAME OVER</h2>
+            <h2 style="font-size: 1.8rem; font-weight: 900;">GAME OVER</h2>
             <h1 id="final-score" style="font-size: 4rem; color: var(--main-pink); margin: 20px 0; font-weight: 900;">0</h1>
             <button class="btn" onclick="location.reload()">다시 하기</button>
         </div>
@@ -166,12 +167,28 @@
     const startBtn = document.getElementById('start-btn');
     const feedbackText = document.getElementById('feedback-text');
 
+    // [수정] 이미지 로드 실패 시에도 버튼을 활성화하는 안전장치
     assets.forEach(src => {
         const img = new Image();
-        img.onload = () => { if(++imagesLoaded === assets.length) { startBtn.innerText = "게임 START!"; startBtn.disabled = false; } };
+        img.onload = () => { 
+            imagesLoaded++; 
+            checkAllLoaded(); 
+        };
+        img.onerror = () => { 
+            console.error(`Failed to load ${src}`); 
+            imagesLoaded++; // 실패해도 진행은 되게 함
+            checkAllLoaded(); 
+        };
         img.src = src;
         images[src.split('.')[0]] = img;
     });
+
+    function checkAllLoaded() {
+        if(imagesLoaded === assets.length) {
+            startBtn.innerText = "게임 START!";
+            startBtn.disabled = false;
+        }
+    }
 
     let hearts = [];
     const ROWS = 17, COLS = 10;
@@ -190,20 +207,18 @@
     }
 
     function startGame() {
-        if(imagesLoaded < assets.length) return;
+        if(gameState !== 'waiting') return;
         
-        // [중요] 초기화 로직 강화
         gameState = 'playing';
         timeLeft = 60;
         score = 0;
         document.getElementById('score').innerText = "0";
         document.getElementById('intro-modal').classList.add('hidden');
-        document.getElementById('result-modal').classList.add('hidden');
         
         initGame();
         
         const timer = setInterval(() => {
-            if (gameState === 'ended') return clearInterval(timer);
+            if (gameState !== 'playing') return clearInterval(timer);
             timeLeft -= 0.1;
             document.getElementById('progress-fill').style.width = (timeLeft / 60 * 100) + '%';
             if (timeLeft <= 0) {
@@ -218,7 +233,7 @@
         ctx.clearRect(0, 0, INT_W, INT_H);
         const cellW = INT_W / COLS;
         const cellH = INT_H / ROWS;
-        const heartSize = Math.min(cellW, cellH) * 0.92;
+        const heartSize = Math.min(cellW, cellH) * 0.94;
 
         const rx = Math.min(startX, currentX), ry = Math.min(startY, currentY);
         const rw = Math.abs(currentX - startX), rh = Math.abs(currentY - startY);
@@ -238,7 +253,16 @@
                 ctx.globalAlpha = 0.6;
                 ctx.translate(hx, hy); ctx.scale(1.1, 1.1); ctx.translate(-hx, -hy);
             }
-            ctx.drawImage(images.heart, h.col * cellW + (cellW - heartSize)/2, h.row * cellH + (cellH - heartSize)/2, heartSize, heartSize);
+            
+            if(images.heart && images.heart.complete) {
+                ctx.drawImage(images.heart, h.col * cellW + (cellW - heartSize)/2, h.row * cellH + (cellH - heartSize)/2, heartSize, heartSize);
+            } else {
+                // 이미지 없을 때 하트 대용 동그라미
+                ctx.fillStyle = "#FFB6C1";
+                ctx.beginPath();
+                ctx.arc(hx, hy, heartSize/2, 0, Math.PI*2);
+                ctx.fill();
+            }
             
             ctx.fillStyle = "white";
             ctx.font = `900 ${heartSize * 0.55}px Arial`;
@@ -285,12 +309,13 @@
         isDragging = false; hearts.forEach(h => h.isSelected = false);
     };
 
+    // 모바일 터치 이벤트 핸들러 강화
     canvas.addEventListener('mousedown', start);
     window.addEventListener('mousemove', move);
     window.addEventListener('mouseup', end);
     canvas.addEventListener('touchstart', e => { e.preventDefault(); start(e); }, {passive: false});
     canvas.addEventListener('touchmove', e => { e.preventDefault(); move(e); }, {passive: false});
-    window.addEventListener('touchend', e => { e.preventDefault(); end(); });
+    window.addEventListener('touchend', e => { e.preventDefault(); end(); }, {passive: false});
 
     document.getElementById('shuffle-btn').onclick = () => {
         if(gameState === 'playing') hearts.forEach(h => { if(h.isAlive) h.val = Math.floor(Math.random()*9)+1; });
