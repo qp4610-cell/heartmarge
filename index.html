@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>하트 팡팡 - 텍스트 정렬 교정본</title>
+    <title>하트 팡팡 - 마스터 최종본</title>
     <style>
-        /* --- 스타일은 이전과 동일하여 생략합니다 --- */
         :root {
             --main-pink: #FF62A5;
             --dark-pink: #D1407A;
@@ -15,6 +14,9 @@
             --pastel-border: #FFD1E6;
             --btn-border: #FF8BBF;
             --yellow-fill: #FFED4D;
+            --btn-yellow-bg: #FFED4D;
+            --btn-yellow-border: #E6D600;
+            --btn-yellow-shadow: #C7B800;
             --white: #FFFFFF;
         }
 
@@ -23,7 +25,7 @@
             background-color: #222;
             display: flex; justify-content: center; align-items: center;
             min-height: 100vh; min-height: 100dvh;
-            overflow: hidden; touch-action: none;
+            overflow: hidden; touch-action: none; font-family: sans-serif;
         }
 
         #game-outer {
@@ -38,49 +40,34 @@
         .header { display: flex; flex-direction: column; gap: 6px; margin-bottom: 15px; }
         .ui-row { display: flex; justify-content: space-between; align-items: center; }
         .gauge-wrapper { position: relative; display: flex; align-items: center; width: 82%; }
-        
         .icon-img { position: absolute; left: -5px; width: 42px; height: 42px; z-index: 10; }
         
         .gauge-bar {
-            width: 100%; height: 24px;
-            background: var(--gauge-bg); 
+            width: 100%; height: 24px; background: var(--gauge-bg); 
             border: 2.5px solid var(--main-pink); border-radius: 20px; 
-            margin-left: 18px;
-            overflow: hidden; position: relative;
-            box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+            margin-left: 18px; overflow: hidden; position: relative;
         }
         
+        /* [수정] 시각적 오차를 줄이기 위해 transition 제거 및 정밀 계산 */
         .gauge-fill { 
-            height: 100%; 
-            background: linear-gradient(to bottom, #FFED4D, #FFD700); 
+            height: 100%; background: linear-gradient(to bottom, #FFED4D, #FFD700); 
             width: 100%; 
-            transition: width 0.1s linear;
         }
         
         .score-text { 
             position: absolute; right: 12px; top: 50%; transform: translateY(-50%); 
             color: var(--main-pink); font-weight: 900; font-size: 1.1rem; 
-            z-index: 5; 
-            display: flex; align-items: baseline;
+            z-index: 5; display: flex; align-items: baseline;
         }
-        .score-text small {
-            font-size: 0.8em;
-            margin-left: 4px;
-            font-weight: 700;
-        }
+        .score-text small { font-size: 0.8em; margin-left: 4px; font-weight: 700; }
 
-        #shuffle-btn { 
-            background: none; border: none; cursor: pointer; padding: 0; 
-            margin-top: 8px;
-        }
+        #shuffle-btn { background: none; border: none; cursor: pointer; padding: 0; }
         #shuffle-btn img { width: 48px; height: 48px; }
 
         #canvas-wrapper {
             flex: 1; position: relative; width: 100%; 
-            background: var(--pastel-bg);
-            border-radius: 12px;
-            border: 2.5px solid var(--pastel-border); 
-            overflow: hidden;
+            background: var(--pastel-bg); border-radius: 12px;
+            border: 2.5px solid var(--pastel-border); overflow: hidden;
         }
         canvas { width: 100%; height: 100%; display: block; }
 
@@ -94,26 +81,52 @@
             background: var(--white); border-radius: 30px; 
             padding: 30px 20px; text-align: center; width: 100%; max-width: 280px;
         }
-        
         .modal h2 { color: var(--main-pink); font-size: 1.4rem; font-weight: 900; margin-bottom: 20px; }
-        .tutorial-steps { text-align: left; font-size: 0.85rem; line-height: 2.2; color: #333; font-weight: 900; margin-bottom: 25px; }
+        
+        .tutorial-steps { 
+            text-align: left; font-size: 0.85rem; line-height: 2.2; color: #333; 
+            font-weight: 900; margin-bottom: 25px; 
+        }
         .tutorial-steps b { color: var(--main-pink); }
 
+        .nickname-input {
+            width: 90%; padding: 10px; border: 2.5px solid var(--light-pink);
+            border-radius: 10px; margin-bottom: 15px; font-size: 1rem;
+            text-align: center; font-weight: 700; color: var(--main-pink);
+        }
+
+        .ranking-table {
+            width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 0.9rem;
+        }
+        .ranking-table th { border-bottom: 2px solid var(--main-pink); color: var(--main-pink); padding: 8px; }
+        .ranking-table td { padding: 8px; border-bottom: 1px solid #eee; font-weight: 700; }
+
+        .btn-group { display: flex; flex-direction: column; gap: 12px; width: 100%; }
         .btn { 
             background: var(--main-pink); color: var(--white); 
             border: 2px solid var(--btn-border);
-            padding: 14px 0; width: 100%; border-radius: 40px; 
-            font-size: 1.3rem; font-weight: 900; cursor: pointer;
-            box-shadow: 0 8px 0 var(--dark-pink);
-            transition: all 0.1s;
+            padding: 12.5px 0; width: 100%; border-radius: 40px; 
+            font-size: 1.25rem; font-weight: 900; cursor: pointer;
+            box-shadow: 0 7px 0 var(--dark-pink); transition: all 0.1s;
+            user-select: none;
         }
-        .btn:active { transform: translateY(4px); box-shadow: 0 4px 0 var(--dark-pink); }
+        .btn:active { transform: translateY(4px); box-shadow: 0 3px 0 var(--dark-pink); }
+
+        .btn-yellow {
+            background: var(--btn-yellow-bg); color: var(--white); 
+            border-color: var(--btn-yellow-border);
+            box-shadow: 0 7px 0 var(--btn-yellow-shadow);
+            text-shadow: 1px 1px 1px rgba(0,0,0,0.2);
+        }
+        .btn-yellow:active { box-shadow: 0 3px 0 var(--btn-yellow-shadow); }
+
+        /* [수정] 겹침 방지를 위해 마진 및 위치 조정 */
+        .sub-text { font-size: 0.75rem; color: #888; font-weight: 700; margin-bottom: 10px; display: block; }
 
         #feedback-text {
             position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%);
             font-size: 4.5rem; font-weight: 900; color: var(--yellow-fill);
-            -webkit-text-stroke: 8px var(--main-pink);
-            paint-order: stroke fill;
+            -webkit-text-stroke: 8px var(--main-pink); paint-order: stroke fill;
             z-index: 50; pointer-events: none; opacity: 0;
         }
         @keyframes popUp {
@@ -134,7 +147,6 @@
                 <img src="watch.png" class="icon-img">
                 <div class="gauge-bar"><div id="progress-fill" class="gauge-fill"></div></div>
             </div>
-            <button id="shuffle-btn"><img src="refresh.png"></button>
         </div>
         <div class="ui-row">
             <div class="gauge-wrapper">
@@ -144,6 +156,7 @@
                     <div class="gauge-fill" style="width: 100%; opacity: 0.03;"></div>
                 </div>
             </div>
+            <button id="shuffle-btn"><img src="refresh.png"></button>
         </div>
     </div>
 
@@ -161,15 +174,33 @@
                 ③ 합이 10이면 하트가 팡! <b>점수</b>가 올라가요.<br>
                 ④ 없으면 <b>새로고침</b> 버튼으로 재배열하세요.
             </div>
-            <button id="start-btn" class="btn" onclick="startGame()" ontouchend="startGame()">게임 START!</button>
+            <button class="btn" onclick="startGame()" ontouchend="startGame()">게임 START!</button>
         </div>
     </div>
 
     <div id="result-modal" class="modal hidden">
         <div class="modal-content">
-            <h2 style="font-size: 1.8rem; font-weight: 900;">GAME OVER</h2>
-            <h1 id="final-score" style="font-size: 4rem; color: var(--main-pink); margin: 20px 0; font-weight: 900;">0</h1>
-            <button class="btn" onclick="location.reload()" ontouchend="location.reload()">다시 하기</button>
+            <h2>GAME OVER</h2>
+            <h1 id="final-score-display" style="font-size: 3.5rem; color: var(--main-pink); margin: 10px 0; font-weight: 900;">0</h1>
+            <input type="text" id="nickname" class="nickname-input" placeholder="닉네임 입력" maxlength="8">
+            <div class="btn-group">
+                <button class="btn" onclick="handleRestart()">다시 하기</button>
+                <button class="btn btn-yellow" onclick="showRankings()">순위 보기</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="ranking-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="sub-text">순위는 TOP10 까지만 보여요</span>
+            <h2>🏆 TOP 10 랭킹</h2>
+            <table class="ranking-table">
+                <thead>
+                    <tr><th>순위</th><th>닉네임</th><th>점수</th></tr>
+                </thead>
+                <tbody id="ranking-body"></tbody>
+            </table>
+            <button class="btn" onclick="closeRankings()">닫기</button>
         </div>
     </div>
 </div>
@@ -184,12 +215,11 @@
 
     let images = {}; let imagesLoaded = 0;
     const assets = ['heart.png', 'watch.png', 'refresh.png', 'bg.png'];
-    const startBtn = document.getElementById('start-btn');
     const feedbackText = document.getElementById('feedback-text');
 
     assets.forEach(src => {
         const img = new Image();
-        img.onload = () => { imagesLoaded++; if(imagesLoaded === assets.length) { startBtn.innerText = "게임 START!"; startBtn.disabled = false; } };
+        img.onload = () => { imagesLoaded++; };
         img.src = src;
         images[src.split('.')[0]] = img;
     });
@@ -214,14 +244,13 @@
         gameState = 'playing'; timeLeft = 60; score = 0;
         document.getElementById('score').innerText = "0";
         document.getElementById('intro-modal').classList.add('hidden');
+        document.getElementById('result-modal').classList.add('hidden');
         initGame();
         
         const timer = setInterval(() => {
-            if (gameState !== 'playing') {
-                clearInterval(timer);
-                return;
-            }
-            timeLeft -= 0.1;
+            if (gameState !== 'playing') { clearInterval(timer); return; }
+            
+            timeLeft -= 0.05; // 0.05초 단위로 더 정밀하게 업데이트
             const progress = Math.max(0, (timeLeft / 60) * 100);
             document.getElementById('progress-fill').style.width = progress + '%';
             
@@ -229,12 +258,40 @@
                 clearInterval(timer);
                 gameState = 'ended';
                 document.getElementById('progress-fill').style.width = '0%';
-                document.getElementById('final-score').innerText = score;
+                document.getElementById('final-score-display').innerText = score;
                 document.getElementById('result-modal').classList.remove('hidden');
             }
-        }, 100);
+        }, 50);
     }
 
+    function handleRestart() { saveScore(); location.reload(); }
+    function saveScore() {
+        const nick = document.getElementById('nickname').value.trim() || "무명하트";
+        if (score <= 0) return;
+        let ranks = JSON.parse(localStorage.getItem('heartPangRank')) || [];
+        ranks.push({ nickname: nick, score: score });
+        ranks.sort((a, b) => b.score - a.score);
+        ranks = ranks.slice(0, 10);
+        localStorage.setItem('heartPangRank', JSON.stringify(ranks));
+    }
+
+    function showRankings() {
+        saveScore();
+        const ranks = JSON.parse(localStorage.getItem('heartPangRank')) || [];
+        const body = document.getElementById('ranking-body');
+        
+        // [수정] 1~3위 순위권에게 왕관👑 아이콘 부여
+        body.innerHTML = ranks.map((r, i) => {
+            const crown = i < 3 ? ' 👑' : ''; 
+            return `<tr><td>${i + 1}</td><td>${r.nickname}${crown}</td><td>${r.score}</td></tr>`;
+        }).join('') || '<tr><td colspan="3">기록이 없습니다.</td></tr>';
+        
+        document.getElementById('ranking-modal').classList.remove('hidden');
+    }
+
+    function closeRankings() { document.getElementById('ranking-modal').classList.add('hidden'); }
+
+    /* --- 애니메이션 및 드래그 로직 (이전과 동일) --- */
     function animate() {
         ctx.clearRect(0, 0, INT_W, INT_H);
         const cellW = INT_W / COLS; const cellH = INT_H / ROWS;
@@ -254,15 +311,10 @@
                 ctx.globalAlpha = 0.6; ctx.translate(hx, hy); ctx.scale(1.1, 1.1); ctx.translate(-hx, -hy);
             }
             if(images.heart) ctx.drawImage(images.heart, h.col * cellW + (cellW - heartSize)/2, h.row * cellH + (cellH - heartSize)/2, heartSize, heartSize);
-            
-            /* [수정] 텍스트 수직 정렬 오프셋 제거 */
             ctx.fillStyle = "white"; ctx.font = `900 ${heartSize * 0.55}px Arial`;
             ctx.textAlign = "center"; ctx.textBaseline = "middle";
             ctx.strokeStyle = "#FF62A5"; ctx.lineWidth = 1.5;
-            // 기존: hy + 2 -> 수정: hy (정중앙)
-            ctx.strokeText(h.val, hx, hy); 
-            ctx.fillText(h.val, hx, hy); 
-            ctx.restore();
+            ctx.strokeText(h.val, hx, hy); ctx.fillText(h.val, hx, hy); ctx.restore();
         });
 
         if (isDragging) {
